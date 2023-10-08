@@ -1,8 +1,7 @@
 (ns clj-socketio-client.core
-  (:use [taoensso.timbre :only [set-level! debug warn info error]])
-  (:require [clojure.pprint])
-  (:require [taoensso.timbre.tools.logging])
-  (:require [cheshire.core])
+  (:require [clojure.pprint]
+            [taoensso.timbre :as timbre :refer [debug info error]]
+            [clojure.data.json :as json])
   (:import [org.json JSONObject]
            [io.socket.parser Parser]
            [io.socket.client IO Socket]
@@ -11,7 +10,6 @@
 
 ;;(taoensso.timbre.tools.logging/use-timbre)
 
-(set-level! :info)
 
 (deftype Listener [callback]
   Emitter$Listener
@@ -24,10 +22,9 @@
     (apply callback args)))
 
 (def default-event-map
-  {Socket/EVENT_ERROR (fn [& args] (error (apply str args)))
-   Socket/EVENT_MESSAGE (fn [& args] (info (apply str args)))
+  {Socket/EVENT_DISCONNECT (fn [& args] (info (apply str args)))
    Socket/EVENT_CONNECT_ERROR (fn [& args] (error (apply str args)))
-   Socket/EVENT_CONNECT_TIMEOUT (fn [& args] (error (apply str args)))})
+   })
 
 (defn connect!
   [socket]
@@ -101,7 +98,7 @@
   [url]
   {:pre [(not-empty url)]}
   (let [socket (make-socket url {"take" (fn [data & rest]
-                                          (let [data (cheshire.core/parse-string (.toString data) true)
+                                          (let [data (json/read-str (.toString data))
                                                 output (:output data)
                                                 hash (:hash data)
                                                 p (get @pending-requests hash)]
